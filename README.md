@@ -10,4 +10,6 @@ Code for GCamP-imaging in mouse models of absence epilepsy
 
 [MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
 
+[MATLAB Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
+
 
