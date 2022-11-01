@@ -1,14 +1,13 @@
-function szs = curateSeizures(szs)
+function seizures = curateSeizures(seizures)
 %% curateSeizures Allows user to manually identify seizure troughs and classify seizure types
 %
 % INPUTS:
-%   sz - structure containing information about detected seizures
-%   arg2 - description of arg2
+%   seizures - structure containing information about detected seizures
 % OUTPUTS:
-%   out1 - description of out1
+%   seizures - description of out1
 %
 % Written by Scott Kilianski
-% 10/25/2022
+% Updated 11/1/2022
 
 %% Body of function here
 % Plotting code below
@@ -21,24 +20,24 @@ sc = scatter([],[],108,'ob','lineWidth',2.5); % initialize scatter for troughs
 ki = 1; %intialize looping index for use below
 key = 1; %initialize key (used to end while loop below)
 while ~isequal(key,'return')
-    set(p,'XData',szs(ki).time,...
-        'YData',szs(ki).EEG)
-    set(ax,'XLim',[szs(ki).time(1),szs(ki).time(end)]);
+    set(p,'XData',seizures(ki).time,...
+        'YData',seizures(ki).EEG)
+    set(ax,'XLim',[seizures(ki).time(1),seizures(ki).time(end)]);
     set(ax.Title,'String',sprintf(['''a'' for previous. '...
         '''d'' for next. '...
         'Enter to add/remove peaks. '...
         'Spacebar to end curation.\n'...
-        'Seizure %d - ''Type %s'''],ki,szs(ki).type));
-    set(sc,'XData',szs(ki).time(szs(ki).trTimeInds),...
-        'YData',szs(ki).trVals);
-    [szs(ki), loopdir, key] = getuInput(szs(ki),ki,ax,sc);
-    if (loopdir==1 && ki<length(szs)) || (loopdir==-1 && ki>1) % check to ensure ki doesn't go beyond szs limits
+        'Seizure %d - ''Type %s'''],ki,seizures(ki).type));
+    set(sc,'XData',seizures(ki).time(seizures(ki).trTimeInds),...
+        'YData',seizures(ki).trVals);
+    [seizures(ki), loopdir, key] = getuInput(seizures(ki),ki,ax,sc);
+    if (loopdir==1 && ki<length(seizures)) || (loopdir==-1 && ki>1) % check to ensure ki doesn't go beyond seizures limits
         ki = ki + loopdir;
     end
 end
 close(szFig);
-szs(strcmp({szs.type},'remove')) = []; % removes seizures tagged for removal
-% save([szs(1).filename '_curated'],'szs'); % update the saved file
+seizures(strcmp({seizures.type},'remove')) = []; % removes seizures tagged for removal
+% save([seizures(1).filename '_curated'],'seizures'); % update the saved file
 
 end %function end
 
