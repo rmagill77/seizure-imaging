@@ -49,7 +49,7 @@ loopdir = 0;
 while ~loopdir % do I need abs()???
     bb = waitforbuttonpress; % wait for click or keyboard button
     if bb % if a keyboard button is pressed
-        key= ;
+        key= get(gcf,'CurrentKey');
         switch key
             case '1'
                 csz.type = '1';

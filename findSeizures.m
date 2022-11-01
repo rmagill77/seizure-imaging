@@ -1,4 +1,4 @@
-function szs = findSeizures(filename, pband, ptCut, ttv, eegChannel, targetFS)
+function seizures = findSeizures(filename, varargin)%pband, ptCut, ttv, eegChannel, targetFS)
 %% findSeizures Finds seizures in an EEG/LFP traces based on power thresholding in
 %
 % INPUTS:
@@ -16,25 +16,32 @@ function szs = findSeizures(filename, pband, ptCut, ttv, eegChannel, targetFS)
 %   sz - structure containing information about seizures
 %
 % Written by Scott Kilianski
-% 10/20/2022
+% Updated 11/1/2022
 
-%% Handle missing arguments
-if ~exist('pband','var')
-    pband = [4 8]; %passband filter limits
-end
-if ~exist('ptCut','var')
-    ptCut = 95;     % passband power percentile value threshold cutoff
-end
-if ~exist('ttv','var')
-    ttv = 3;        % trough threshold value (in standard deviation units). Used for detecting trough times
-end
-if ~exist('eegChannel','var')
-    eegChannel = 1;
-end
-if ~exist('targetFS','var')
-    targetFS = 200; % desired sampling frequency
-end
-plotFlag = 1; % optional plotting flag
+%% Parse inputs
+validScalarNum = @(x) isnumeric(x) && isscalar(x);
+default_pband = [4 8];
+default_ptCut = 95;
+default_ttv = 3;
+default_eegChannel = 1;
+default_targetFS = 200;
+default_plotFlag = 1;
+p = inputParser;
+addRequired(p,'filename');
+addParameter(p,'pband',default_pband,@(x) numel(x)==2);
+addParameter(p,'ptCut',default_ptCut,validScalarNum);
+addParameter(p,'ttv',default_ttv,validScalarNum);
+addParameter(p,'eegChannel',default_eegChannel,validScalarNum);
+addParameter(p,'targetFS',default_targetFS);
+addParameter(p,'plotFlag',default_plotFlag);
+parse(p,filename,varargin{:});
+pband = p.Results.pband;
+ptCut = p.Results.ptCut;
+ttv = p.Results.ttv;
+eegChannel = p.Results.eegChannel;
+targetFS = p.Results.targetFS;
+plotFlag = p.Results.plotFlag;
+
 %% Load in data
 [fp, fn, fext] = fileparts(filename);   % get file name, path, and extension
 if strcmp(fext,'.adicht')
@@ -73,14 +80,14 @@ ts = cell2mat(arrayfun(@(x) find(x==EEG.time), ...
 outfn = sprintf('%s%sseizures.mat',fp,'\'); % name of the output file
 for ii = 1:size(ts,1)
     eegInd = ts(ii,1):ts(ii,2);
-    szs(ii).time = EEG.time(eegInd); % find EEG.time-referenced.
-    szs(ii).EEG = EEG.data(eegInd);
-    szs(ii).type = 'Unclassified';
-    [trgh, locs] = findpeaks(-szs(ii).EEG); % find troughs (negative peaks)
+    seizures(ii).time = EEG.time(eegInd); % find EEG.time-referenced.
+    seizures(ii).EEG = EEG.data(eegInd);
+    seizures(ii).type = 'Unclassified';
+    [trgh, locs] = findpeaks(-seizures(ii).EEG); % find troughs (negative peaks)
     locs(-trgh>ttv) = []; % remove those troughs that don't cross the threshold (ttv)
     trgh(-trgh>ttv) = []; % remove those troughs that don't cross the threshold (ttv)
-    szs(ii).trTimeInds = locs; szs(ii).trVals = -trgh; % store trough time (indices) and values in sz structure
-    szs(ii).filename = outfn;
+    seizures(ii).trTimeInds = locs; seizures(ii).trVals = -trgh; % store trough time (indices) and values in sz structure
+    seizures(ii).filename = outfn;
 end
 
 %% Plotting trace, thresholds, and identified putative seizures
@@ -90,7 +97,8 @@ plot(EEG.time, EEG.data,'k','LineWidth',2); title('EEG');
 hold on
 plot(get(gca,'xlim'),[ttv,ttv],'b','linewidth',1.5); hold off;
 ax(2) = subplot(312);
-plot(t,bands.broadLow,'k','linewidth',2); title('Power in 5-8Hz Range');
+plot(t,bands.broadLow,'k','linewidth',2); 
+title(sprintf('Power in %d-%dHz Range',pband(1),pband(2)));
 hold on
 plot(get(gca,'xlim'),[tVal,tVal],'r','linewidth',1.5); hold off;
 ax(3) = subplot(313);
@@ -107,7 +115,10 @@ for ii = 1:size(startEnd_interp,1)
 end
 end % plotting option end
 
-save(outfn,'szs'); % save output into same folder as filename
+try % try statement here because sometimes saving fails due to insufficient permissions
+    save(outfn,'seizures'); % save output into same folder as filename
+end
+
 end %function end
 
 function startEnd_interp = szmerge(startEnd_interp, pzit)
