@@ -41,7 +41,8 @@ ttv = p.Results.ttv;
 eegChannel = p.Results.eegChannel;
 targetFS = p.Results.targetFS;
 plotFlag = p.Results.plotFlag;
-
+detectionParameters(1,:) = {'pband','ptCut','ttv','eegChannel','targetFS'};
+detectionParameters(2,:) = {pband,ptCut,ttv,eegChannel,targetFS};
 %% Load in data
 [fp, fn, fext] = fileparts(filename);   % get file name, path, and extension
 if strcmp(fext,'.adicht')
@@ -88,6 +89,7 @@ for ii = 1:size(ts,1)
     trgh(-trgh>ttv) = []; % remove those troughs that don't cross the threshold (ttv)
     seizures(ii).trTimeInds = locs; seizures(ii).trVals = -trgh; % store trough time (indices) and values in sz structure
     seizures(ii).filename = outfn;
+    seizures(ii).parameters = detectionParameters;
 end
 
 %% Plotting trace, thresholds, and identified putative seizures
@@ -115,11 +117,15 @@ for ii = 1:size(startEnd_interp,1)
 end
 end % plotting option end
 
+
 try % try statement here because sometimes saving fails due to insufficient permissions
     save(outfn,'seizures'); % save output into same folder as filename
+    fprintf('seizures.mat saved in %s\n',fileparts(outfn))
+catch
+    fprintf('seizures.mat could not be saved in %s, likely because of insufficient permissions\n',fileparts(outfn))
 end
 
-end %function end
+end %main function end
 
 function startEnd_interp = szmerge(startEnd_interp, pzit)
 %szmerge Merges overlapping or close-in-time seizures
