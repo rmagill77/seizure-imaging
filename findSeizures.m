@@ -1,4 +1,4 @@
-function seizures = findSeizures(filename, varargin)%pband, ptCut, ttv, eegChannel, targetFS)
+function seizures = findSeizures(varargin)%pband, ptCut, ttv, eegChannel, targetFS)
 %% findSeizures Finds seizures in an EEG/LFP traces based on power thresholding in
 %
 % INPUTS:
@@ -20,6 +20,7 @@ function seizures = findSeizures(filename, varargin)%pband, ptCut, ttv, eegChann
 
 %% Parse inputs
 validScalarNum = @(x) isnumeric(x) && isscalar(x);
+default_filename = [];
 default_pband = [4 8];
 default_ptCut = 95;
 default_ttv = 3;
@@ -27,14 +28,15 @@ default_eegChannel = 1;
 default_targetFS = 200;
 default_plotFlag = 1;
 p = inputParser;
-addRequired(p,'filename');
+addParameter(p,'filename',default_filename,@(x) isstring(x));
 addParameter(p,'pband',default_pband,@(x) numel(x)==2);
 addParameter(p,'ptCut',default_ptCut,validScalarNum);
 addParameter(p,'ttv',default_ttv,validScalarNum);
 addParameter(p,'eegChannel',default_eegChannel,validScalarNum);
 addParameter(p,'targetFS',default_targetFS);
 addParameter(p,'plotFlag',default_plotFlag);
-parse(p,filename,varargin{:});
+parse(p,varargin{:});
+filename = p.Results.filename;
 pband = p.Results.pband;
 ptCut = p.Results.ptCut;
 ttv = p.Results.ttv;
@@ -43,14 +45,25 @@ targetFS = p.Results.targetFS;
 plotFlag = p.Results.plotFlag;
 detectionParameters(1,:) = {'pband','ptCut','ttv','eegChannel','targetFS'};
 detectionParameters(2,:) = {pband,ptCut,ttv,eegChannel,targetFS};
+
 %% Load in data
+if isempty(filename)
+    [fn,fp,rv] = uigetfile({'*.mat;*.adicht;*.rhd'});
+    if ~rv % if no file selected, end function early
+        return
+    else
+        filename = fullfile(fp,fn);
+    end
+end
 [fp, fn, fext] = fileparts(filename);   % get file name, path, and extension
 if strcmp(fext,'.adicht')
     EEG = adiLoadEEG(filename,eegChannel,targetFS);     % loads .adicht files
 elseif strcmp(fext,'.rhd')
     EEG = intanLoadEEG(filename,eegChannel,targetFS);   % loads .rhd files
+elseif strcmp(fext,'.mat')
+    EEG = matLoadEEG(filename,eegChannel,targetFS);     % loads .mat files that were exported from LabChart
 else
-    error('File type unrecognized. Use .rhd or .adicht file types only');
+    error('File type unrecognized. Use .rhd, .adicht, .mat file types only');
 end
 
 %% Calculate spectrogram and threshold bandpower in band specificed by pband
