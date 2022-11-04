@@ -1,19 +1,21 @@
 function seizures = findSeizures(varargin)%pband, ptCut, ttv, eegChannel, targetFS)
-%% findSeizures Finds seizures in an EEG/LFP traces based on power thresholding in
+%% findSeizures Finds seizures in an EEG/LFP traces based on power thresholding
 %
 % INPUTS:
-%   filename - full file path to file with EEG data
-%   pband - passband filter limits for seizure detection (default = [4 8])
-%   ttv - trough threshold value. This value is multipled by the standard
-%         deviation of the EEG to set a threshold that seizure troughs must
-%         pass (default = 3)
-%   ptCut - percentile cuttoff threshold. This value determines the
-%           threshold for detecting potential seizures by bandpower thresholding (default = 99)
-%   eegChannel - channel number of the EEG (usually 1 or 2) (default = 1)
-%   targetFS - target sampling frequency. Used to downsample data to
-%              reduce computational load (default = 200)
+%   %----------------------Name-Value-Pairs----------------------%
+%   Name: 'filename'     Value: full file path to file with EEG data
+%   Name: 'pband'        Value: passband filter limits for seizure detection (default = [4 8])
+%   Name: 'ttv'          Value: trough threshold value. This value is multipled by the standard
+%                               deviation of the EEG to set a threshold that seizure troughs must
+%                               pass (default = 3)
+%   Name: 'ptCut'        Value: percentile cuttoff threshold. This value determines the
+%                               threshold for detecting potential seizures by bandpower thresholding (default = 95)
+%   Name: 'eegChannel'   Value: channel number of the EEG (usually 1 or 2) (default = 1)
+%   Name: 'targetFS'     Value: target sampling frequency. Used to downsample data to
+%                               reduce computational load (default = 200)
+%
 % OUTPUTS:
-%   sz - structure containing information about seizures
+%   seizures - structure containing information about detected seizures
 %
 % Written by Scott Kilianski
 % Updated 11/1/2022
@@ -92,12 +94,25 @@ ts = cell2mat(arrayfun(@(x) find(x==EEG.time), ...
     startEnd_interp,...
     'UniformOutput',0)); % getting start and end indices
 outfn = sprintf('%s%sseizures.mat',fp,'\'); % name of the output file
+
+%-------------------------------------------------------------------------%
+%quick check to get the correct 'findpeaks' function because the chronux
+%toolbox function of the same name sometimes shadows the MATLAB signal
+%processing toolobox version (i.e. the version we actually want)
+fpList = which('findpeaks.m','-all'); % find all 'findpeaks.m'
+fpInd = find(contains(fpList,'/toolbox/signal/signal/findpeaks.m'),1,'first'); %get location of the correct 'findpeaks.m'
+currdir = cd; % save current directory path
+cd(fileparts(fpList{fpInd})); % change directory to locatin of correct 'findpeaks.m'
+fpFun = @findpeaks; % set function handle to correct 'findpeaks.m'
+cd(currdir); % cd back to original directory
+%-------------------------------------------------------------------------%
+
 for ii = 1:size(ts,1)
     eegInd = ts(ii,1):ts(ii,2);
     seizures(ii).time = EEG.time(eegInd); % find EEG.time-referenced.
     seizures(ii).EEG = EEG.data(eegInd);
     seizures(ii).type = 'Unclassified';
-    [trgh, locs] = findpeaks(-seizures(ii).EEG); % find troughs (negative peaks)
+    [trgh, locs] = fpFun(-seizures(ii).EEG); % find troughs (negative peaks)
     locs(-trgh>ttv) = []; % remove those troughs that don't cross the threshold (ttv)
     trgh(-trgh>ttv) = []; % remove those troughs that don't cross the threshold (ttv)
     seizures(ii).trTimeInds = locs; seizures(ii).trVals = -trgh; % store trough time (indices) and values in sz structure
